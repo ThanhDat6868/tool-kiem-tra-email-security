@@ -1,0 +1,643 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Security Checker - Kiểm tra bảo mật Email</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <header class="bg-white border-b">
+    <div class="max-w-5xl mx-auto px-5 py-5">
+      <h1 class="text-2xl font-bold text-blue-700">
+        Email Security Checker
+      </h1>
+      <p class="text-gray-500 mt-1">
+        Công cụ kiểm tra bảo mật email SPF, DKIM và DMARC
+      </p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-5 py-10">
+
+    <section class="bg-white rounded-xl shadow-sm p-6">
+      <h2 class="text-xl font-bold mb-2">
+        Kiểm tra bảo mật Email
+      </h2>
+
+      <p class="text-gray-500 text-sm mb-5">
+        Nhập tên miền để kiểm tra các bản ghi xác thực email.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="domainInput"
+          type="text"
+          placeholder="Ví dụ: google.com"
+          class="flex-1 border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+        >
+
+        <button
+          id="checkBtn"
+          onclick="checkEmailSecurity()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3 rounded-lg font-semibold"
+        >
+          Kiểm tra
+        </button>
+      </div>
+
+      <div class="mt-4">
+        <label class="text-sm text-gray-600 font-medium">
+          DKIM Selector (không bắt buộc)
+        </label>
+
+        <input
+          id="selectorInput"
+          type="text"
+          placeholder="Ví dụ: selector1, selector2, google"
+          class="w-full border rounded-lg px-4 py-3 mt-2 outline-none focus:ring-2 focus:ring-blue-500"
+        >
+
+        <p class="text-xs text-gray-400 mt-2">
+          Có thể nhập nhiều selector, cách nhau bằng dấu phẩy.
+          Để trống sẽ kiểm tra các selector phổ biến.
+        </p>
+      </div>
+
+      <p id="message" class="mt-4 text-sm text-gray-500">
+        Chưa có kết quả kiểm tra.
+      </p>
+    </section>
+
+    <section id="resultSection" class="hidden mt-6 space-y-5">
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between gap-2 mb-5">
+          <div>
+            <h2 class="text-xl font-bold">Kết quả kiểm tra</h2>
+            <p id="domainResult" class="text-gray-500 text-sm mt-1"></p>
+          </div>
+
+          <span id="overallStatus"
+            class="text-sm font-bold px-3 py-2 rounded-lg bg-slate-100">
+            Đang đánh giá
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+          <div class="bg-slate-50 rounded-lg p-4">
+            <p class="text-sm text-gray-500">SPF</p>
+            <p id="spfStatus" class="font-bold text-lg mt-2">--</p>
+          </div>
+
+          <div class="bg-slate-50 rounded-lg p-4">
+            <p class="text-sm text-gray-500">DKIM</p>
+            <p id="dkimStatus" class="font-bold text-lg mt-2">--</p>
+          </div>
+
+          <div class="bg-slate-50 rounded-lg p-4">
+            <p class="text-sm text-gray-500">DMARC</p>
+            <p id="dmarcStatus" class="font-bold text-lg mt-2">--</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SPF -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-3">
+          SPF - Sender Policy Framework
+        </h2>
+
+        <p id="spfDescription" class="text-sm text-gray-600 mb-4"></p>
+
+        <div class="bg-slate-900 rounded-lg p-4">
+          <p class="text-xs text-gray-400 mb-2">SPF Record</p>
+          <pre id="spfRecord"
+            class="text-green-300 text-sm whitespace-pre-wrap break-all"></pre>
+        </div>
+      </div>
+
+      <!-- DKIM -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-3">
+          DKIM - DomainKeys Identified Mail
+        </h2>
+
+        <p id="dkimDescription" class="text-sm text-gray-600 mb-4"></p>
+
+        <div id="dkimRecords" class="space-y-3"></div>
+      </div>
+
+      <!-- DMARC -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-3">
+          DMARC - Email Authentication Policy
+        </h2>
+
+        <p id="dmarcDescription" class="text-sm text-gray-600 mb-4"></p>
+
+        <div class="bg-slate-900 rounded-lg p-4">
+          <p class="text-xs text-gray-400 mb-2">DMARC Record</p>
+          <pre id="dmarcRecord"
+            class="text-green-300 text-sm whitespace-pre-wrap break-all"></pre>
+        </div>
+
+        <div id="dmarcAnalysis" class="mt-4 space-y-2"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-lg mb-3">Tổng kết và khuyến nghị</h2>
+        <div id="recommendations" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center gap-3 mb-4">
+          <h2 class="font-bold text-lg">Dữ liệu DNS</h2>
+
+          <button onclick="copyResult()"
+            class="text-blue-600 hover:underline text-sm font-semibold">
+            Sao chép kết quả
+          </button>
+        </div>
+
+        <pre id="rawResult"
+          class="bg-slate-900 text-green-300 p-4 rounded-lg text-xs overflow-auto max-h-96 whitespace-pre-wrap"></pre>
+      </div>
+
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm p-6 mt-6">
+      <h2 class="font-bold text-lg mb-3">SPF, DKIM và DMARC là gì?</h2>
+
+      <div class="space-y-4 text-sm text-gray-600 leading-7">
+        <div>
+          <h3 class="font-bold text-slate-800">SPF</h3>
+          SPF xác định máy chủ nào được phép gửi email thay mặt cho tên miền.
+        </div>
+
+        <div>
+          <h3 class="font-bold text-slate-800">DKIM</h3>
+          DKIM sử dụng chữ ký điện tử để giúp máy chủ nhận xác minh email.
+        </div>
+
+        <div>
+          <h3 class="font-bold text-slate-800">DMARC</h3>
+          DMARC quy định cách xử lý email không vượt qua xác thực SPF hoặc DKIM
+          và hỗ trợ báo cáo về tình trạng xác thực.
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="text-center text-gray-500 text-sm py-8">
+    Email Security Checker - Công cụ kiểm tra bảo mật Email
+  </footer>
+
+  <script>
+    const DNS_API = "https://cloudflare-dns.com/dns-query";
+
+    const DEFAULT_SELECTORS = [
+      "default",
+      "selector1",
+      "selector2",
+      "google",
+      "mail",
+      "dkim",
+      "s1",
+      "s2",
+      "k1",
+      "k2",
+      "email",
+      "mx",
+      "mandrill",
+      "zoho"
+    ];
+
+    let latestResult = null;
+
+    // Kiểm tra tên miền
+    function normalizeDomain(value) {
+      let domain = value.trim().toLowerCase();
+
+      domain = domain.replace(/^https?:\/\//, "");
+      domain = domain.split("/")[0];
+      domain = domain.split("?")[0];
+      domain = domain.split(":")[0];
+
+      return domain.replace(/\.$/, "");
+    }
+
+    function isValidDomain(domain) {
+      return /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain);
+    }
+
+    // Truy vấn DNS công khai
+    async function queryDNS(name, type) {
+      const url =
+        DNS_API +
+        "?name=" + encodeURIComponent(name) +
+        "&type=" + encodeURIComponent(type);
+
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/dns-json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể truy vấn DNS: HTTP " + response.status);
+      }
+
+      return await response.json();
+    }
+
+    // Lấy bản ghi TXT
+    function getTXTRecords(data) {
+      if (!data || !data.Answer) return [];
+
+      return data.Answer
+        .filter(item => item.type === 16)
+        .map(item => item.data.replace(/^"|"$/g, ""));
+    }
+
+    // Hiển thị trạng thái
+    function setStatus(id, text, color) {
+      const element = document.getElementById(id);
+      element.textContent = text;
+
+      element.className = "font-bold text-lg mt-2 " +
+        (color === "green"
+          ? "text-green-600"
+          : color === "red"
+            ? "text-red-600"
+            : "text-orange-500");
+    }
+
+    function showDKIMRecords(records) {
+      const container = document.getElementById("dkimRecords");
+      container.innerHTML = "";
+
+      if (records.length === 0) {
+        const p = document.createElement("p");
+        p.className = "text-orange-600 text-sm";
+        p.textContent =
+          "Không tìm thấy DKIM tại các selector đã thử. " +
+          "Tên miền có thể đang dùng selector riêng.";
+        container.appendChild(p);
+        return;
+      }
+
+      records.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "bg-slate-50 rounded-lg p-4";
+
+        const title = document.createElement("p");
+        title.className = "font-semibold text-sm mb-2";
+        title.textContent = item.selector + "._domainkey";
+
+        const record = document.createElement("p");
+        record.className = "text-xs text-gray-600 break-all";
+        record.textContent = item.record;
+
+        card.appendChild(title);
+        card.appendChild(record);
+        container.appendChild(card);
+      });
+    }
+
+    function analyzeDMARC(record) {
+      const container = document.getElementById("dmarcAnalysis");
+      container.innerHTML = "";
+
+      if (!record) return;
+
+      const tags = {};
+
+      record.split(";").forEach(part => {
+        const index = part.indexOf("=");
+
+        if (index > 0) {
+          const key = part.slice(0, index).trim().toLowerCase();
+          const value = part.slice(index + 1).trim();
+          tags[key] = value;
+        }
+      });
+
+      const items = [
+        ["Phiên bản", tags.v || "Không có"],
+        ["Chính sách", tags.p || "Không có"],
+        ["Chính sách subdomain", tags.sp || "Không thiết lập"],
+        ["Báo cáo tổng hợp", tags.rua || "Không thiết lập"],
+        ["Báo cáo lỗi", tags.ruf || "Không thiết lập"],
+        ["Căn chỉnh SPF", tags.aspf || "r (mặc định)"],
+        ["Căn chỉnh DKIM", tags.adkim || "r (mặc định)"]
+      ];
+
+      items.forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "flex flex-col sm:flex-row sm:justify-between border-b pb-2 gap-1";
+
+        const left = document.createElement("span");
+        left.className = "text-gray-500";
+        left.textContent = label;
+
+        const right = document.createElement("span");
+        right.className = "font-medium break-all";
+        right.textContent = value;
+
+        row.appendChild(left);
+        row.appendChild(right);
+        container.appendChild(row);
+      });
+
+      return tags;
+    }
+
+    function showRecommendations(spf, dkim, dmarc) {
+      const container = document.getElementById("recommendations");
+      container.innerHTML = "";
+
+      const recommendations = [];
+
+      if (!spf.found) {
+        recommendations.push("Chưa tìm thấy SPF. Hãy kiểm tra và cấu hình bản ghi SPF nếu tên miền gửi email.");
+      } else if (!spf.valid) {
+        recommendations.push("SPF có dấu hiệu sai cú pháp hoặc có nhiều bản ghi SPF. Cần kiểm tra lại.");
+      } else if (spf.record.includes("+all")) {
+        recommendations.push("SPF đang dùng +all, cho phép mọi máy chủ gửi email. Đây là cấu hình không an toàn.");
+      }
+
+      if (!dkim.found) {
+        recommendations.push("Chưa xác nhận được DKIM tại các selector đã thử. Hãy kiểm tra selector thực tế của nhà cung cấp email.");
+      }
+
+      if (!dmarc.found) {
+        recommendations.push("Chưa tìm thấy DMARC. Hãy cân nhắc thiết lập bản ghi DMARC.");
+      } else if (dmarc.policy === "none") {
+        recommendations.push("DMARC đang ở chế độ p=none, chủ yếu theo dõi và chưa yêu cầu từ chối email giả mạo.");
+      } else if (dmarc.policy === "quarantine") {
+        recommendations.push("DMARC đang dùng p=quarantine, yêu cầu đưa email không đạt xác thực vào thư rác hoặc vùng cách ly.");
+      } else if (dmarc.policy === "reject") {
+        recommendations.push("DMARC đang dùng p=reject, yêu cầu từ chối email không đạt chính sách xác thực.");
+      }
+
+      if (recommendations.length === 0) {
+        recommendations.push("Không phát hiện vấn đề cơ bản trong các bản ghi đã kiểm tra.");
+      }
+
+      recommendations.forEach(item => {
+        const p = document.createElement("p");
+        p.className = "bg-slate-50 p-3 rounded-lg text-gray-700";
+        p.textContent = "• " + item;
+        container.appendChild(p);
+      });
+    }
+
+    // Kiểm tra SPF, DKIM và DMARC
+    async function checkEmailSecurity() {
+      const domain = normalizeDomain(
+        document.getElementById("domainInput").value
+      );
+
+      const selectorText =
+        document.getElementById("selectorInput").value.trim();
+
+      const message = document.getElementById("message");
+      const button = document.getElementById("checkBtn");
+
+      if (!domain) {
+        message.textContent = "Vui lòng nhập tên miền.";
+        message.className = "mt-4 text-sm text-red-600";
+        return;
+      }
+
+      if (!isValidDomain(domain)) {
+        message.textContent = "Tên miền không hợp lệ. Ví dụ: google.com";
+        message.className = "mt-4 text-sm text-red-600";
+        return;
+      }
+
+      let selectors = selectorText
+        ? selectorText.split(",").map(s => s.trim()).filter(Boolean)
+        : DEFAULT_SELECTORS;
+
+      selectors = [...new Set(selectors)];
+
+      if (
+        selectors.length > 30 ||
+        selectors.some(s => !/^[a-zA-Z0-9_-]{1,63}$/.test(s))
+      ) {
+        message.textContent =
+          "Selector không hợp lệ hoặc số lượng selector vượt quá 30.";
+        message.className = "mt-4 text-sm text-red-600";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Đang kiểm tra...";
+      button.classList.add("opacity-60", "cursor-not-allowed");
+
+      message.textContent =
+        "Đang truy vấn bản ghi SPF, DKIM và DMARC...";
+      message.className = "mt-4 text-sm text-blue-600";
+
+      document.getElementById("resultSection").classList.add("hidden");
+
+      try {
+        // Kiểm tra SPF và DMARC
+        const [spfData, dmarcData] = await Promise.all([
+          queryDNS(domain, "TXT"),
+          queryDNS("_dmarc." + domain, "TXT")
+        ]);
+
+        const spfRecords = getTXTRecords(spfData)
+          .filter(record => /^v=spf1(?:\s|$)/i.test(record));
+
+        const dmarcRecords = getTXTRecords(dmarcData)
+          .filter(record => /^v=DMARC1(?:\s|;|$)/i.test(record));
+
+        // Kiểm tra DKIM tại các selector
+        const dkimRecords = [];
+
+        for (const selector of selectors) {
+          try {
+            const data = await queryDNS(
+              selector + "._domainkey." + domain,
+              "TXT"
+            );
+
+            const records = getTXTRecords(data);
+
+            records.forEach(record => {
+              if (/v=DKIM1|p=/i.test(record)) {
+                dkimRecords.push({
+                  selector: selector,
+                  record: record
+                });
+              }
+            });
+          } catch (error) {
+            // Bỏ qua selector không truy vấn được
+          }
+        }
+
+        const spf = {
+          found: spfRecords.length > 0,
+          valid: spfRecords.length === 1 &&
+            /v=spf1(?:\s|$)/i.test(spfRecords[0]),
+          record: spfRecords.join("\n"),
+          multiple: spfRecords.length > 1
+        };
+
+        const dkim = {
+          found: dkimRecords.length > 0,
+          records: dkimRecords,
+          selectorsChecked: selectors
+        };
+
+        const dmarcRecord = dmarcRecords[0] || "";
+
+        const policyMatch = dmarcRecord.match(/(?:^|;)\s*p\s*=\s*(none|quarantine|reject)/i);
+
+        const dmarc = {
+          found: dmarcRecords.length > 0,
+          valid: dmarcRecords.length === 1 &&
+            /^v=DMARC1(?:\s*;|$)/i.test(dmarcRecord),
+          record: dmarcRecord,
+          policy: policyMatch ? policyMatch[1].toLowerCase() : null
+        };
+
+        // Hiển thị kết quả
+        document.getElementById("domainResult").textContent =
+          "Tên miền: " + domain;
+
+        setStatus(
+          "spfStatus",
+          spf.found ? (spf.valid ? "Đã tìm thấy" : "Có dấu hiệu lỗi") : "Không tìm thấy",
+          spf.found && spf.valid ? "green" : "red"
+        );
+
+        setStatus(
+          "dkimStatus",
+          dkim.found ? "Đã tìm thấy" : "Chưa xác nhận",
+          dkim.found ? "green" : "orange"
+        );
+
+        setStatus(
+          "dmarcStatus",
+          dmarc.found ? (dmarc.valid ? "Đã tìm thấy" : "Có dấu hiệu lỗi") : "Không tìm thấy",
+          dmarc.found && dmarc.valid ? "green" : "red"
+        );
+
+        document.getElementById("spfDescription").textContent =
+          spf.multiple
+            ? "Phát hiện nhiều bản ghi SPF. Một tên miền chỉ nên có một bản ghi SPF."
+            : spf.found
+              ? "Đã tìm thấy bản ghi SPF trong DNS của tên miền."
+              : "Không tìm thấy bản ghi SPF.";
+
+        document.getElementById("spfRecord").textContent =
+          spf.record || "Không có bản ghi SPF.";
+
+        document.getElementById("dkimDescription").textContent =
+          "Đã thử " + selectors.length +
+          " selector: " + selectors.join(", ");
+
+        showDKIMRecords(dkim.records);
+
+        document.getElementById("dmarcDescription").textContent =
+          dmarc.found
+            ? "Đã tìm thấy bản ghi DMARC."
+            : "Không tìm thấy bản ghi DMARC tại _dmarc." + domain;
+
+        document.getElementById("dmarcRecord").textContent =
+          dmarc.record || "Không có bản ghi DMARC.";
+
+        analyzeDMARC(dmarc.record);
+
+        showRecommendations(spf, dkim, dmarc);
+
+        const score = [
+          spf.found && spf.valid,
+          dkim.found,
+          dmarc.found && dmarc.valid
+        ].filter(Boolean).length;
+
+        const overall = document.getElementById("overallStatus");
+
+        overall.textContent = score + "/3 mục được xác nhận";
+        overall.className =
+          "text-sm font-bold px-3 py-2 rounded-lg " +
+          (score === 3
+            ? "bg-green-100 text-green-700"
+            : score >= 1
+              ? "bg-yellow-100 text-yellow-700"
+              : "bg-red-100 text-red-700");
+
+        latestResult = {
+          domain,
+          spf,
+          dkim,
+          dmarc,
+          dnsResponses: {
+            spf: spfData,
+            dmarc: dmarcData
+          }
+        };
+
+        document.getElementById("rawResult").textContent =
+          JSON.stringify(latestResult, null, 2);
+
+        document.getElementById("resultSection").classList.remove("hidden");
+
+        message.textContent = "Đã hoàn thành kiểm tra bảo mật email.";
+        message.className = "mt-4 text-sm text-green-600";
+
+      } catch (error) {
+        message.textContent =
+          "Không thể kiểm tra DNS: " + error.message +
+          ". Hãy kiểm tra kết nối mạng và thử lại.";
+
+        message.className = "mt-4 text-sm text-red-600";
+
+      } finally {
+        button.disabled = false;
+        button.textContent = "Kiểm tra";
+        button.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    }
+
+    // Sao chép kết quả
+    async function copyResult() {
+      if (!latestResult) return;
+
+      try {
+        await navigator.clipboard.writeText(
+          JSON.stringify(latestResult, null, 2)
+        );
+
+        alert("Đã sao chép kết quả kiểm tra!");
+      } catch (error) {
+        alert("Không thể sao chép kết quả.");
+      }
+    }
+
+    // Nhấn Enter để kiểm tra
+    document.getElementById("domainInput").addEventListener(
+      "keydown",
+      function(event) {
+        if (event.key === "Enter") {
+          checkEmailSecurity();
+        }
+      }
+    );
+
+  </script>
+</body>
+</html>
